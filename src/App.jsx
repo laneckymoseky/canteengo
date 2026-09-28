@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import MascotBackground from './components/MascotBackground'
 import Login from './auth/Login'
 import Signup from './auth/Signup'
 import RequireRole from './auth/RequireRole'
@@ -21,6 +22,7 @@ import ManageStaff from './admin/ManageStaff'
 export default function App() {
   return (
     <BrowserRouter>
+      <MascotBackground />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />

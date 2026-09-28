@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import WorkerNav from '../components/WorkerNav'
+import CategoryAnimation from '../components/CategoryAnimation'
 import OnboardingTour from '../components/OnboardingTour'
 
 const CATEGORIES = ['all', 'breakfast', 'lunch', 'special', 'drink', 'featured']
@@ -15,7 +16,24 @@ export default function Menu() {
   const [search, setSearch] = useState('')
   const [recommended, setRecommended] = useState([])
   const [announcements, setAnnouncements] = useState([])
-  const [dismissedAt, setDismissedAt] = useState(null)
+  // Dismissed announcement ids are remembered on this device so closed ones stay closed
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dismissed_announcements') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  function dismissAnnouncement(id) {
+    const next = [...dismissedIds, id]
+    setDismissedIds(next)
+    try {
+      localStorage.setItem('dismissed_announcements', JSON.stringify(next))
+    } catch {
+      /* storage unavailable - dismissal just lasts this session */
+    }
+  }
   const [showTour, setShowTour] = useState(false)
 
   useEffect(() => {
@@ -186,7 +204,7 @@ export default function Menu() {
   if (loading) return <p className="page">Loading menu...</p>
 
   const latestAnnouncement = announcements[0]
-  const showBanner = latestAnnouncement && dismissedAt !== latestAnnouncement.id
+  const showBanner = latestAnnouncement && !dismissedIds.includes(latestAnnouncement.id)
 
   return (
     <div style={{ paddingBottom: cartCount > 0 ? 90 : 0 }}>
@@ -220,7 +238,7 @@ export default function Menu() {
             </div>
             <button
               className="secondary"
-              onClick={() => setDismissedAt(latestAnnouncement.id)}
+              onClick={() => dismissAnnouncement(latestAnnouncement.id)}
               style={{ padding: '4px 10px', fontSize: 12 }}
             >
               ✕
@@ -247,6 +265,8 @@ export default function Menu() {
             </button>
           ))}
         </div>
+
+        <CategoryAnimation category={category} />
 
         {recommendedItems.length > 0 && category === 'all' && !search && (
           <div style={{ marginBottom: 20 }}>

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import lottie from 'lottie-web'
 
-export default function LottiePlayer({ animationData, loop = true, style }) {
+export default function LottiePlayer({ animationData, loop = true, onComplete, style }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
@@ -12,7 +12,9 @@ export default function LottiePlayer({ animationData, loop = true, style }) {
       autoplay: true,
       animationData,
     })
+    if (onComplete) anim.addEventListener('complete', onComplete)
     return () => anim.destroy()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationData, loop])
 
   return <div ref={containerRef} style={style} />
