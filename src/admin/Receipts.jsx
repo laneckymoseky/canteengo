@@ -17,7 +17,7 @@ export default function Receipts() {
     const { data } = await supabase
       .from('orders')
       .select(
-        'id, total_amount, status, mpesa_receipt_number, created_at, profiles(full_name, email), order_items(qty, unit_price, daily_menu(menu_master(name)))'
+        'id, total_amount, status, mpesa_receipt_number, created_at, profiles!orders_worker_id_fkey(full_name, email), order_items(qty, unit_price, daily_menu(menu_master(name)))'
       )
       .gte('created_at', `${date}T00:00:00`)
       .lte('created_at', `${date}T23:59:59`)

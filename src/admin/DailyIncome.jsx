@@ -15,7 +15,7 @@ export default function DailyIncome() {
     const today = new Date().toISOString().slice(0, 10)
     const { data } = await supabase
       .from('orders')
-      .select('id, total_amount, status, created_at, profiles(full_name)')
+      .select('id, total_amount, status, created_at, profiles!orders_worker_id_fkey(full_name)')
       .eq('status', 'collected')
       .gte('created_at', `${today}T00:00:00`)
       .lte('created_at', `${today}T23:59:59`)

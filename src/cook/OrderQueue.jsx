@@ -53,7 +53,7 @@ export default function OrderQueue() {
   async function fetchActiveOrders() {
     const { data } = await supabase
       .from('orders')
-      .select('*, order_items(qty, unit_price, daily_menu(menu_master(name))), profiles(full_name)')
+      .select('*, order_items(qty, unit_price, daily_menu(menu_master(name))), profiles!orders_worker_id_fkey(full_name)')
       .in('status', ['awaiting_cash_verification', 'preparing', 'ready_for_pickup'])
       .order('created_at', { ascending: true })
     setOrders(data || [])
