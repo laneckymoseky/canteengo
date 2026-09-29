@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import logo from '../assets/logo.png'
 import CookNav from '../components/CookNav'
 import OnboardingTour from '../components/OnboardingTour'
+import useOrderPresence from '../hooks/useOrderPresence'
 
 const NEXT_STATUS = {
   awaiting_cash_verification: 'preparing',
@@ -19,6 +20,8 @@ export default function OrderQueue() {
   const [orders, setOrders] = useState([])
   const [showTour, setShowTour] = useState(false)
   const [role, setRole] = useState('cook')
+  const [me, setMe] = useState({ id: null, name: '' })
+  const { claimsByOrder, claimOrder, releaseOrder, myClaim } = useOrderPresence(me.id, me.name)
 
   useEffect(() => {
     fetchActiveOrders()
@@ -44,6 +47,7 @@ export default function OrderQueue() {
       setRole(profile.role)
       if (!profile.has_completed_tour) setShowTour(true)
     }
+    setMe({ id: sessionData.session.user.id, name: profile?.full_name || 'Cook' })
   }
 
   async function fetchActiveOrders() {
@@ -67,6 +71,9 @@ export default function OrderQueue() {
     }
 
     await supabase.from('orders').update(updates).eq('id', order.id)
+
+    // Order's done moving through this stage - free it up for the next cook to claim.
+    if (next === 'collected') releaseOrder()
   }
 
   return (
@@ -84,7 +91,12 @@ export default function OrderQueue() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-        {orders.map((order) => (
+        {orders.map((order) => {
+          const claim = claimsByOrder[order.id]
+          const claimedByMe = myClaim === order.id
+          const claimedByOther = claim && claim.cookId !== me.id
+
+          return (
           <div
             key={order.id}
             className="card"
@@ -96,6 +108,7 @@ export default function OrderQueue() {
                   : order.status === 'awaiting_cash_verification'
                   ? '6px solid var(--roam-danger)'
                   : '6px solid var(--roam-orange)',
+              opacity: claimedByOther ? 0.6 : 1,
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -105,8 +118,18 @@ export default function OrderQueue() {
               <span>KES {order.total_amount}</span>
             </div>
             {order.payment_method === 'cash' && (
-              <span className="badge danger" style={{ marginBottom: 8, display: 'inline-block' }}>
+              <span className="badge danger" style={{ marginBottom: 8, display: 'inline-block', marginRight: 6 }}>
                 Cash — verify at counter
+              </span>
+            )}
+            {claimedByOther && (
+              <span className="badge" style={{ marginBottom: 8, display: 'inline-block' }}>
+                👀 {claim.cookName} is on this
+              </span>
+            )}
+            {claimedByMe && (
+              <span className="badge success" style={{ marginBottom: 8, display: 'inline-block' }}>
+                You're working on this
               </span>
             )}
             <ul style={{ paddingLeft: 20, margin: '0 0 16px' }}>
@@ -116,14 +139,42 @@ export default function OrderQueue() {
                 </li>
               ))}
             </ul>
-            <button
-              style={{ fontSize: 18, padding: '14px 20px', width: '100%' }}
-              onClick={() => advanceStatus(order)}
-            >
-              {BUTTON_LABEL[order.status]}
-            </button>
+            {!claim && (
+              <button
+                className="secondary"
+                style={{ fontSize: 16, padding: '12px 20px', width: '100%' }}
+                onClick={() => claimOrder(order.id)}
+              >
+                Claim — start working on this
+              </button>
+            )}
+
+            {claimedByMe && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  style={{ fontSize: 18, padding: '14px 20px', flex: 1 }}
+                  onClick={() => advanceStatus(order)}
+                >
+                  {BUTTON_LABEL[order.status]}
+                </button>
+                <button
+                  className="secondary"
+                  style={{ fontSize: 14, padding: '14px 16px' }}
+                  onClick={() => releaseOrder()}
+                >
+                  Release
+                </button>
+              </div>
+            )}
+
+            {claimedByOther && (
+              <button disabled style={{ fontSize: 16, padding: '14px 20px', width: '100%' }}>
+                {claim.cookName} is handling this
+              </button>
+            )}
           </div>
-        ))}
+          )
+        })}
       </div>
       </div>
     </div>
